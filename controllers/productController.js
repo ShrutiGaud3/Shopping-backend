@@ -47,7 +47,12 @@ const getProducts = async (req, res) => {
         }
 
         if (categoryMatches.length > 0) {
-          const catRegexes = categoryMatches.map(c => new RegExp(c.trim().split(' ')[0], 'i'));
+          const catRegexes = categoryMatches.map(c => {
+            let stem = c.trim().split(' ')[0];
+            if (stem.toLowerCase().endsWith('ies')) stem = stem.slice(0, -3);
+            else if (stem.toLowerCase().endsWith('s')) stem = stem.slice(0, -1);
+            return new RegExp(stem, 'i');
+          });
           query.category = { $in: catRegexes };
         }
       }
