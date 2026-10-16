@@ -23,6 +23,9 @@ const faqRoutes = require('./routes/faqRoutes');
 const bannerRoutes = require('./routes/bannerRoutes');
 const homeSectionRoutes = require('./routes/homeSectionRoutes');
 const trustBadgeRoutes = require('./routes/trustBadgeRoutes');
+const shippingZoneRoutes = require('./routes/shippingZoneRoutes');
+const blogRoutes = require('./routes/blogRoutes');
+const newsletterRoutes = require('./routes/newsletterRoutes');
 
 // Load environment variables
 dotenv.config();
@@ -44,6 +47,29 @@ app.use(cors({
 app.options('*', cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+// Security: NoSQL Injection Sanitization & HTTP Security Headers
+const sanitizeInput = (obj) => {
+  if (!obj || typeof obj !== 'object') return obj;
+  for (const key in obj) {
+    if (/^\$/.test(key) || key.includes('.')) {
+      delete obj[key];
+    } else if (typeof obj[key] === 'object') {
+      sanitizeInput(obj[key]);
+    }
+  }
+  return obj;
+};
+
+app.use((req, res, next) => {
+  if (req.body) sanitizeInput(req.body);
+  if (req.query) sanitizeInput(req.query);
+  if (req.params) sanitizeInput(req.params);
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'SAMEORIGIN');
+  res.setHeader('X-XSS-Protection', '1; mode=block');
+  next();
+});
 
 // Base API Healthcheck Route
 app.get('/', (req, res) => {
@@ -74,6 +100,9 @@ app.use('/api/faqs', faqRoutes);
 app.use('/api/banners', bannerRoutes);
 app.use('/api/home-sections', homeSectionRoutes);
 app.use('/api/trust-badges', trustBadgeRoutes);
+app.use('/api/shipping-zones', shippingZoneRoutes);
+app.use('/api/blogs', blogRoutes);
+app.use('/api/newsletter', newsletterRoutes);
 
 // Error Handling Middlewares
 app.use(notFound);

@@ -5,7 +5,8 @@ const {
   getAllHomeSectionsAdmin,
   createHomeSection,
   updateHomeSection,
-  deleteHomeSection
+  deleteHomeSection,
+  reorderHomeSections
 } = require('../controllers/homeSectionController');
 const { protect } = require('../middleware/authMiddleware');
 const { adminOnly } = require('../middleware/adminMiddleware');
@@ -16,6 +17,7 @@ router.get('/', getHomeSections);
 // Admin routes
 router.get('/admin', protect, adminOnly, getAllHomeSectionsAdmin);
 router.post('/', protect, adminOnly, createHomeSection);
+router.put('/reorder', protect, adminOnly, reorderHomeSections);
 router.put('/:id', protect, adminOnly, updateHomeSection);
 router.delete('/:id', protect, adminOnly, deleteHomeSection);
 

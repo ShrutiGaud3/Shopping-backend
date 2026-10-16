@@ -14,7 +14,7 @@ const homeSectionSchema = new mongoose.Schema(
     },
     type: {
       type: String,
-      enum: ['story_circles', 'product_grid', 'banner_grid', 'campaign_banner'],
+      enum: ['story_circles', 'product_grid', 'banner_grid', 'campaign_banner', 'bestselling_categories'],
       default: 'product_grid',
       required: true
     },
@@ -40,13 +40,27 @@ const homeSectionSchema = new mongoose.Schema(
         type: Number,
         default: 8
       },
+      description: {
+        type: String,
+        default: ''
+      },
+      secondaryCtaText: {
+        type: String,
+        default: ''
+      },
+      secondaryCtaLink: {
+        type: String,
+        default: ''
+      },
       banners: [
         {
           image: { type: String, default: '' },
           title: { type: String, default: '' },
           subtitle: { type: String, default: '' },
           link: { type: String, default: '/products' },
-          badge: { type: String, default: '' }
+          badge: { type: String, default: '' },
+          tag: { type: String, default: '' },
+          description: { type: String, default: '' }
         }
       ],
       ctaText: {

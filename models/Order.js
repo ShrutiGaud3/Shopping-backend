@@ -11,7 +11,12 @@ const orderItemSchema = new mongoose.Schema({
   price: { type: Number, required: true },
   quantity: { type: Number, required: true },
   size: { type: String, required: true },
-  color: { type: String, required: true }
+  color: { type: String, required: true },
+  stitchOption: {
+    type: { type: String },
+    price: { type: Number, default: 0 },
+    description: { type: String }
+  }
 });
 
 const orderSchema = new mongoose.Schema({
@@ -48,11 +53,12 @@ const orderSchema = new mongoose.Schema({
     street: { type: String, default: '' },
     city: { type: String, default: '' },
     state: { type: String, default: '' },
-    pincode: { type: String, default: '' }
+    pincode: { type: String, default: '' },
+    country: { type: String, default: 'India' }
   },
   paymentMethod: {
     type: String,
-    enum: ['COD', 'UPI', 'Card'],
+    enum: ['COD', 'UPI', 'Card', 'Online'],
     required: true,
     default: 'COD'
   },
@@ -60,6 +66,18 @@ const orderSchema = new mongoose.Schema({
     type: String,
     enum: ['pending', 'paid', 'failed'],
     default: 'pending'
+  },
+  paymentId: {
+    type: String,
+    default: ''
+  },
+  razorpayOrderId: {
+    type: String,
+    default: ''
+  },
+  paymentSignature: {
+    type: String,
+    default: ''
   },
   orderStatus: {
     type: String,
@@ -79,6 +97,10 @@ const orderSchema = new mongoose.Schema({
     type: Number,
     default: 0
   },
+  codCharge: {
+    type: Number,
+    default: 0
+  },
   tax: {
     type: Number,
     default: 0
@@ -91,6 +113,46 @@ const orderSchema = new mongoose.Schema({
     type: String,
     default: ''
   },
+  // Logistics & Real-Time Parcel Tracking
+  trackingNumber: {
+    type: String,
+    default: ''
+  },
+  carrierName: {
+    type: String,
+    default: ''
+  },
+  trackingUrl: {
+    type: String,
+    default: ''
+  },
+  deliveredAt: {
+    type: Date
+  },
+  // Exchange / Return Lifecycle (Valid within 10 days of delivery)
+  exchangeStatus: {
+    type: String,
+    enum: ['none', 'requested', 'approved', 'rejected'],
+    default: 'none'
+  },
+  exchangeReason: {
+    type: String,
+    default: ''
+  },
+  exchangeNotes: {
+    type: String,
+    default: ''
+  },
+  exchangeRequestedAt: {
+    type: Date
+  },
+  exchangeResolvedAt: {
+    type: Date
+  },
+  exchangeAdminNotes: {
+    type: String,
+    default: ''
+  },
   date: {
     type: String,
     default: () => new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })
@@ -99,4 +161,10 @@ const orderSchema = new mongoose.Schema({
   timestamps: true
 });
 
+orderSchema.index({ user: 1, createdAt: -1 });
+orderSchema.index({ orderStatus: 1 });
+orderSchema.index({ exchangeStatus: 1 });
+orderSchema.index({ createdAt: -1 });
+
 module.exports = mongoose.model('Order', orderSchema);
+

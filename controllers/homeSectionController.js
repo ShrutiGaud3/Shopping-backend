@@ -19,20 +19,40 @@ exports.getHomeSections = async (req, res) => {
           const limit = sec.config?.limit || 8;
 
           if (filterBy === 'trending') {
-            filter.isTrending = true;
+            products = await Product.find({ isTrending: true })
+              .sort({ rating: -1, reviewsCount: -1 })
+              .limit(limit)
+              .lean();
           } else if (filterBy === 'deal') {
-            filter.isDeal = true;
+            products = await Product.find({ isDeal: true })
+              .sort({ discountPercent: -1 })
+              .limit(limit)
+              .lean();
           } else if (filterBy === 'new') {
-            filter.isNew = true;
+            products = await Product.find({ isNew: true })
+              .sort({ createdAt: -1 })
+              .limit(limit)
+              .lean();
           } else if (filterBy === 'category' && sec.config?.category) {
-            filter.category = new RegExp(sec.config.category, 'i');
+            products = await Product.find({ category: new RegExp(sec.config.category, 'i') })
+              .sort({ rating: -1, createdAt: -1 })
+              .limit(limit)
+              .lean();
+          } else {
+            products = await Product.find()
+              .sort({ createdAt: -1 })
+              .limit(limit)
+              .lean();
           }
 
-          let products = await Product.find(filter).limit(limit).lean();
-
-          // Fallback if specific filter returns 0 products
-          if (products.length === 0) {
-            products = await Product.find().limit(limit).lean();
+          // If fewer products returned than limit, supplement with latest products
+          if (products.length < limit) {
+            const existingIds = products.map((p) => p._id);
+            const additional = await Product.find({ _id: { $nin: existingIds } })
+              .sort({ createdAt: -1 })
+              .limit(limit - products.length)
+              .lean();
+            products = [...products, ...additional];
           }
 
           return {
@@ -129,6 +149,36 @@ exports.updateHomeSection = async (req, res) => {
   }
 };
 
+// @desc    Reorder home sections
+// @route   PUT /api/home-sections/reorder
+// @access  Private/Admin
+exports.reorderHomeSections = async (req, res) => {
+  try {
+    const { orderings } = req.body;
+    if (Array.isArray(orderings)) {
+      await Promise.all(
+        orderings.map((item) =>
+          HomeSection.findByIdAndUpdate(item.id, { order: item.order })
+        )
+      );
+    }
+
+    const sections = await HomeSection.find().sort({ order: 1, createdAt: 1 });
+
+    res.status(200).json({
+      success: true,
+      message: 'Home sections reordered successfully',
+      data: sections
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Error reordering home sections',
+      error: error.message
+    });
+  }
+};
+
 // @desc    Delete home section
 // @route   DELETE /api/home-sections/:id
 // @access  Private/Admin
@@ -155,3 +205,4 @@ exports.deleteHomeSection = async (req, res) => {
     });
   }
 };
+

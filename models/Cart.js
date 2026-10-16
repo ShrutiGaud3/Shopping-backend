@@ -21,6 +21,11 @@ const cartItemSchema = new mongoose.Schema({
     type: String,
     required: true,
     default: 'Default'
+  },
+  stitchOption: {
+    type: { type: String },
+    price: { type: Number, default: 0 },
+    description: { type: String }
   }
 });
 

@@ -13,6 +13,9 @@ const getProducts = async (req, res) => {
       size,
       color,
       brand,
+      fabric,
+      occasion,
+      work,
       minPrice,
       maxPrice,
       rating,
@@ -91,6 +94,51 @@ const getProducts = async (req, res) => {
         query.brand = { $in: brand };
       } else {
         query.brand = brand;
+      }
+    }
+
+    // 6a. Fabric filter
+    if (fabric) {
+      const fabList = (Array.isArray(fabric) ? fabric.join(',') : String(fabric)).split(',').filter(Boolean);
+      if (fabList.length > 0) {
+        const fabRegexes = fabList.map(f => new RegExp(f.trim(), 'i'));
+        query.$and = query.$and || [];
+        query.$and.push({
+          $or: [
+            { fabric: { $in: fabRegexes } },
+            { 'specifications.fabric': { $in: fabRegexes } }
+          ]
+        });
+      }
+    }
+
+    // 6b. Occasion filter
+    if (occasion) {
+      const occList = (Array.isArray(occasion) ? occasion.join(',') : String(occasion)).split(',').filter(Boolean);
+      if (occList.length > 0) {
+        const occRegexes = occList.map(o => new RegExp(o.trim(), 'i'));
+        query.$and = query.$and || [];
+        query.$and.push({
+          $or: [
+            { occasion: { $in: occRegexes } },
+            { 'specifications.occasion': { $in: occRegexes } }
+          ]
+        });
+      }
+    }
+
+    // 6c. Work / Embroidery filter
+    if (work) {
+      const workList = (Array.isArray(work) ? work.join(',') : String(work)).split(',').filter(Boolean);
+      if (workList.length > 0) {
+        const workRegexes = workList.map(w => new RegExp(w.trim(), 'i'));
+        query.$and = query.$and || [];
+        query.$and.push({
+          $or: [
+            { work: { $in: workRegexes } },
+            { 'specifications.pattern': { $in: workRegexes } }
+          ]
+        });
       }
     }
 

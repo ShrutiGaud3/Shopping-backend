@@ -33,40 +33,68 @@ const reviewSchema = new mongoose.Schema({
     min: 1,
     max: 5
   },
+  title: {
+    type: String,
+    default: '',
+    trim: true
+  },
   comment: {
     type: String,
     required: [true, 'Please provide review comment'],
     trim: true
   },
+  images: [{
+    type: String,
+    trim: true
+  }],
+  isVerifiedBuyer: {
+    type: Boolean,
+    default: true
+  },
   isVerifiedPurchase: {
     type: Boolean,
     default: true
+  },
+  status: {
+    type: String,
+    enum: ['pending', 'approved', 'rejected'],
+    default: 'pending'
+  },
+  rejectionReason: {
+    type: String,
+    default: ''
+  },
+  helpfulVotes: {
+    type: Number,
+    default: 0
   }
 }, {
   timestamps: true
 });
 
-// Calculate average product rating static method
+// Calculate average product rating static method for approved reviews only
 reviewSchema.statics.calculateAverageRating = async function(productId) {
-  const stats = await this.aggregate([
-    { $match: { product: productId } },
-    {
-      $group: {
-        _id: '$product',
-        reviewsCount: { $sum: 1 },
-        averageRating: { $avg: '$rating' }
-      }
-    }
-  ]);
-
   try {
+    const objectId = typeof productId === 'string' ? new mongoose.Types.ObjectId(productId) : productId;
+    const stats = await this.aggregate([
+      { $match: { product: objectId, status: 'approved' } },
+      {
+        $group: {
+          _id: '$product',
+          reviewsCount: { $sum: 1 },
+          averageRating: { $avg: '$rating' }
+        }
+      }
+    ]);
+
+    const Product = mongoose.models.Product || require('./Product');
     if (stats.length > 0) {
-      await mongoose.model('Product').findByIdAndUpdate(productId, {
+      await Product.findByIdAndUpdate(objectId, {
         rating: Math.round(stats[0].averageRating * 10) / 10,
         reviewsCount: stats[0].reviewsCount
       });
     } else {
-      await mongoose.model('Product').findByIdAndUpdate(productId, {
+      await Product.findByIdAndUpdate(objectId, {
         rating: 0,
         reviewsCount: 0
       });

@@ -5,6 +5,23 @@ const colorSchema = new mongoose.Schema({
   hex: { type: String, required: true }
 });
 
+const stitchOptionSchema = new mongoose.Schema({
+  type: {
+    type: String,
+    required: true,
+    default: 'Unstitched'
+  },
+  price: {
+    type: Number,
+    required: true,
+    default: 0
+  },
+  description: {
+    type: String,
+    default: 'Standard fabric material provided'
+  }
+});
+
 const productSchema = new mongoose.Schema({
   name: {
     type: String,
@@ -13,12 +30,14 @@ const productSchema = new mongoose.Schema({
   },
   slug: {
     type: String,
-    lowercase: true
+    lowercase: true,
+    trim: true
   },
   brand: {
     type: String,
     required: [true, 'Please provide brand name'],
-    default: 'Velora Studio'
+    default: 'Weavera',
+    trim: true
   },
   description: {
     type: String,
@@ -27,7 +46,7 @@ const productSchema = new mongoose.Schema({
   category: {
     type: String,
     required: [true, 'Please specify category'],
-    enum: ['Jackets', 'Dresses', 'Shirts', 'T-Shirts', 'Bottoms', 'Accessories', 'Shoes']
+    trim: true
   },
   gender: {
     type: String,
@@ -55,7 +74,7 @@ const productSchema = new mongoose.Schema({
   }],
   sizes: [{
     type: String,
-    enum: ['XS', 'S', 'M', 'L', 'XL', 'XXL', 'One Size']
+    trim: true
   }],
   colors: [colorSchema],
   stock: {
@@ -66,17 +85,18 @@ const productSchema = new mongoose.Schema({
   },
   sku: {
     type: String,
-    default: ''
+    default: '',
+    trim: true
   },
   rating: {
     type: Number,
-    default: 0,
+    default: 4.8,
     min: 0,
     max: 5
   },
   reviewsCount: {
     type: Number,
-    default: 0
+    default: 12
   },
   isFeatured: {
     type: Boolean,
@@ -94,6 +114,61 @@ const productSchema = new mongoose.Schema({
     type: Boolean,
     default: false
   },
+
+  // Surat Ethnic Wear Specialization Fields
+  fabric: {
+    type: String,
+    default: 'Banarasi Silk',
+    trim: true
+  },
+  work: {
+    type: String,
+    default: 'Zari Weaving',
+    trim: true
+  },
+  occasion: {
+    type: String,
+    default: 'Festive & Wedding',
+    trim: true
+  },
+  washCare: {
+    type: String,
+    default: 'Dry Clean Only',
+    trim: true
+  },
+  setContents: {
+    type: String,
+    default: '1 Saree with Blouse Piece',
+    trim: true
+  },
+  sareeLength: {
+    type: String,
+    default: '5.5 Meters + 0.8 Meter Blouse Piece',
+    trim: true
+  },
+  lehengaFlare: {
+    type: String,
+    default: '',
+    trim: true
+  },
+  dispatchTime: {
+    type: String,
+    default: 'Ready to Dispatch in 24 Hours',
+    trim: true
+  },
+  videoUrl: {
+    type: String,
+    default: '',
+    trim: true
+  },
+  stitchOptions: [stitchOptionSchema],
+  deliveryInfo: {
+    estimatedDays: { type: Number, default: 4 },
+    isCodAvailable: { type: Boolean, default: true },
+    freeShipping: { type: Boolean, default: true }
+  },
+
+  // General Specifications for Accessories & Western Wear
   specifications: {
     fabric: { type: String, default: 'Cotton Blend' },
     care: { type: String, default: 'Dry Clean Only' },
@@ -105,7 +180,6 @@ const productSchema = new mongoose.Schema({
     occasion: { type: String, default: 'Casual / Evening' },
     lining: { type: String, default: 'Polyester Satin' },
     closure: { type: String, default: 'Front Zip / Buttons' },
-    // Accessory & Bag Specifications
     material: { type: String, default: 'Premium Metal / Italian Leather' },
     lensMaterial: { type: String, default: 'Polycarbonate / TAC' },
     frameShape: { type: String, default: 'Wayfarer / Aviator' },
@@ -118,10 +192,23 @@ const productSchema = new mongoose.Schema({
     compartments: { type: String, default: '2 Main Zip Compartments' },
     laptopFit: { type: String, default: 'Fits up to 15" Laptop' },
     hardware: { type: String, default: 'Gold-Tone Brushed Metal' },
-    beltWidth: { type: String, default: '3.5 cm' }
   }
 }, {
   timestamps: true
+});
+
+// Performance & Full-Text Search Indexes
+productSchema.index({ slug: 1 });
+productSchema.index({ category: 1 });
+productSchema.index({ price: 1 });
+productSchema.index({ stock: 1 });
+productSchema.index({ createdAt: -1 });
+productSchema.index({
+  name: 'text',
+  description: 'text',
+  fabric: 'text',
+  work: 'text',
+  occasion: 'text'
 });
 
 module.exports = mongoose.model('Product', productSchema);

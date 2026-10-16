@@ -2,39 +2,80 @@ const mongoose = require('mongoose');
 const User = require('../models/User');
 const Product = require('../models/Product');
 const Order = require('../models/Order');
+const Review = require('../models/Review');
+const Subscriber = require('../models/Subscriber');
 
 // @desc    Get executive admin dashboard metrics
 // @route   GET /api/admin/dashboard
 // @access  Private/Admin
 const getAdminDashboard = async (req, res) => {
   try {
-    const totalUsers = await User.countDocuments({ role: 'customer' });
-    const totalProducts = await Product.countDocuments();
-    const totalOrders = await Order.countDocuments();
+    const startOfDay = new Date();
+    startOfDay.setHours(0, 0, 0, 0);
 
-    // Calculate revenue
-    const paidOrders = await Order.find({ orderStatus: { $ne: 'Cancelled' } });
-    const totalRevenue = paidOrders.reduce((acc, order) => acc + order.totalAmount, 0);
+    // Run aggregations and counts in parallel
+    const [
+      totalUsers,
+      totalProducts,
+      totalOrders,
+      todayOrders,
+      allPaidOrders,
+      todayPaidOrders,
+      pendingOrders,
+      exchangeRequests,
+      pendingReviews,
+      totalSubscribers,
+      todaySubscribers,
+      lowStockProducts,
+      lowStockCount,
+      recentOrders
+    ] = await Promise.all([
+      User.countDocuments({ role: 'customer' }),
+      Product.countDocuments(),
+      Order.countDocuments(),
+      Order.countDocuments({ createdAt: { $gte: startOfDay } }),
+      Order.find({ orderStatus: { $ne: 'Cancelled' } }).select('totalAmount'),
+      Order.find({ createdAt: { $gte: startOfDay }, orderStatus: { $ne: 'Cancelled' } }).select('totalAmount'),
+      Order.countDocuments({ orderStatus: { $in: ['Placed', 'Pending', 'Confirmed', 'Packed'] } }),
+      Order.countDocuments({ exchangeStatus: 'requested' }),
+      Review.countDocuments({ status: 'pending' }),
+      Subscriber.countDocuments({ status: 'active' }),
+      Subscriber.countDocuments({ createdAt: { $gte: startOfDay } }),
+      Product.find({ stock: { $lte: 10 } })
+        .select('name images brand category price stock sku rating')
+        .sort({ stock: 1 })
+        .limit(8),
+      Product.countDocuments({ stock: { $lte: 10 } }),
+      Order.find()
+        .populate('user', 'name email')
+        .sort({ createdAt: -1 })
+        .limit(10)
+    ]);
 
-    const pendingOrders = await Order.countDocuments({ orderStatus: { $in: ['Pending', 'Confirmed', 'Packed'] } });
-    const lowStockProducts = await Product.countDocuments({ stock: { $lte: 10 } });
-
-    // Fetch recent 10 orders
-    const recentOrders = await Order.find().sort({ createdAt: -1 }).limit(10);
+    const totalRevenue = allPaidOrders.reduce((acc, o) => acc + (o.totalAmount || 0), 0);
+    const todayRevenue = todayPaidOrders.reduce((acc, o) => acc + (o.totalAmount || 0), 0);
 
     res.status(200).json({
       success: true,
       data: {
+        totalRevenue,
+        todayRevenue,
+        totalOrders,
+        todayOrders,
+        pendingOrders,
+        exchangeRequests,
+        pendingReviews,
         totalUsers,
         totalProducts,
-        totalOrders,
-        totalRevenue,
-        pendingOrders,
+        lowStockCount,
         lowStockProducts,
+        totalSubscribers,
+        todaySubscribers,
         recentOrders
       }
     });
   } catch (error) {
+    console.error('Error in getAdminDashboard:', error);
     res.status(500).json({
       success: false,
       message: error.message
@@ -135,6 +176,48 @@ const getAllUsersAdmin = async (req, res) => {
   }
 };
 
+// @desc    Update user role (Super Admin Only)
+// @route   PUT /api/admin/users/:id/role
+// @access  Private/SuperAdmin
+const updateUserRoleAdmin = async (req, res) => {
+  try {
+    const { role } = req.body;
+    if (!['customer', 'manager', 'admin', 'superadmin'].includes(role)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid role. Must be customer, manager, admin, or superadmin'
+      });
+    }
+
+    const user = await User.findById(req.params.id);
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    user.role = role;
+    await user.save();
+
+    res.status(200).json({
+      success: true,
+      message: `User role updated to ${role} successfully`,
+      data: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role
+      }
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+};
+
 // @desc    Delete user account (Admin Only)
 // @route   DELETE /api/admin/users/:id
 // @access  Private/Admin
@@ -158,5 +241,6 @@ module.exports = {
   getInventory,
   updateInventoryStock,
   getAllUsersAdmin,
+  updateUserRoleAdmin,
   deleteUserAdmin
 };

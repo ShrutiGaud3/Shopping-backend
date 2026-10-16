@@ -30,7 +30,7 @@ const getCart = async (req, res) => {
 // @access  Private
 const addToCart = async (req, res) => {
   try {
-    const { productId, quantity = 1, size = 'M', color = 'Default' } = req.body;
+    const { productId, quantity = 1, size = 'M', color = 'Default', stitchOption } = req.body;
 
     if (!productId || !mongoose.Types.ObjectId.isValid(productId)) {
       return res.status(400).json({
@@ -61,9 +61,14 @@ const addToCart = async (req, res) => {
       cart = new Cart({ user: req.user._id, items: [] });
     }
 
-    // Check if item with same productId, size, color exists
+    // Check if item with same productId, size, color, stitchOption exists
+    const stitchType = stitchOption?.type || '';
     const existingItemIndex = cart.items.findIndex(
-      (item) => item.product.toString() === productId && item.size === size && item.color === color
+      (item) =>
+        item.product.toString() === productId &&
+        item.size === size &&
+        item.color === color &&
+        (item.stitchOption?.type || '') === stitchType
     );
 
     if (existingItemIndex > -1) {
@@ -75,7 +80,8 @@ const addToCart = async (req, res) => {
         product: productId,
         quantity,
         size,
-        color
+        color,
+        stitchOption: stitchOption || undefined
       });
     }
 

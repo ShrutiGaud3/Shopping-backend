@@ -3,35 +3,50 @@ const Order = require('../models/Order');
 const Product = require('../models/Product');
 const Coupon = require('../models/Coupon');
 const Cart = require('../models/Cart');
+const Setting = require('../models/Setting');
+const ShippingZone = require('../models/ShippingZone');
 const generateOrderId = require('../utils/generateOrderId');
 
 // @desc    Create new customer order (Checkout)
 // @route   POST /api/orders
-// @access  Private
+// @access  Public (optionalProtect) / Private
 const createOrder = async (req, res) => {
   try {
-    const { items, shippingAddress, paymentMethod = 'COD', couponCode } = req.body;
+    const {
+      items,
+      shippingAddress,
+      paymentMethod = 'COD',
+      couponCode,
+      paymentId = '',
+      razorpayOrderId = '',
+      paymentSignature = ''
+    } = req.body;
 
     if (!items || items.length === 0) {
       return res.status(400).json({
         success: false,
-        message: 'No order items provided'
+        message: 'No order items provided in cart'
       });
     }
 
-    if (!shippingAddress || !shippingAddress.address || !shippingAddress.city || !shippingAddress.pincode) {
+    if (!shippingAddress || (!shippingAddress.address && !shippingAddress.street) || !shippingAddress.city || !shippingAddress.pincode) {
       return res.status(400).json({
         success: false,
-        message: 'Complete shipping address is required'
+        message: 'Complete shipping address is required (street/address, city, pincode)'
       });
     }
 
-    // 1. Verify items & calculate subtotal
+    // Load store settings for shipping & COD
+    const settings = await Setting.findOne() || {};
+    const codEnabled = settings.codEnabled !== undefined ? settings.codEnabled : true;
+    const codExtraCharge = (paymentMethod === 'COD' && codEnabled) ? Number(settings.codExtraCharge || 0) : 0;
+
+    // 1. Verify items & calculate subtotal strictly from DB prices + stitching options
     let subtotal = 0;
     const verifiedItems = [];
 
     for (const item of items) {
-      const prodId = item.product || item.id;
+      const prodId = item.product || item.id || item._id;
       let dbProduct = null;
 
       if (prodId && mongoose.Types.ObjectId.isValid(prodId)) {
@@ -42,80 +57,167 @@ const createOrder = async (req, res) => {
         dbProduct = await Product.findOne({ name: item.name });
       }
 
-      if (dbProduct) {
-        const itemPrice = Number(item.price || dbProduct.price || 1299);
-        subtotal += itemPrice * Number(item.quantity || 1);
-
-        verifiedItems.push({
-          product: dbProduct._id,
-          name: dbProduct.name,
-          image: (dbProduct.images && dbProduct.images[0]) || item.image || 'https://images.unsplash.com/photo-1544441893-675973e31985?auto=format&fit=crop&w=800&q=80',
-          price: itemPrice,
-          quantity: Number(item.quantity || 1),
-          size: item.size || 'M',
-          color: item.color || 'Default'
-        });
-      } else {
-        const itemPrice = Number(item.price || 1299);
-        subtotal += itemPrice * Number(item.quantity || 1);
-
-        verifiedItems.push({
-          name: item.name || 'Fashion Item',
-          image: item.image || 'https://images.unsplash.com/photo-1544441893-675973e31985?auto=format&fit=crop&w=800&q=80',
-          price: itemPrice,
-          quantity: Number(item.quantity || 1),
-          size: item.size || 'M',
-          color: item.color || 'Default'
-        });
+      // Base price from DB (fallback to passed price if product is seed catalog item)
+      const basePrice = dbProduct ? Number(dbProduct.price) : Number(item.price || 1299);
+      
+      // Stitching surcharge (if customer picked custom/semi-stitched tailoring)
+      let stitchSurcharge = 0;
+      let stitchOption = undefined;
+      if (item.stitchOption && item.stitchOption.price) {
+        stitchSurcharge = Number(item.stitchOption.price) || 0;
+        stitchOption = {
+          type: item.stitchOption.type || 'Custom Stitching',
+          price: stitchSurcharge,
+          description: item.stitchOption.description || ''
+        };
       }
+
+      const itemEffectivePrice = basePrice + stitchSurcharge;
+      const quantity = Math.max(1, Number(item.quantity || 1));
+      subtotal += itemEffectivePrice * quantity;
+
+      verifiedItems.push({
+        product: dbProduct ? dbProduct._id : undefined,
+        name: dbProduct ? dbProduct.name : (item.name || 'Ethnic Wear Item'),
+        image: (dbProduct && dbProduct.images && dbProduct.images[0]) || item.image || 'https://images.unsplash.com/photo-1583391733956-3750e0ff4e8b?auto=format&fit=crop&w=800&q=80',
+        price: itemEffectivePrice,
+        quantity,
+        size: item.size || item.selectedSize || 'Free Size',
+        color: item.color || item.selectedColor || 'As Shown',
+        stitchOption
+      });
     }
 
     // 2. Validate coupon if provided
     let discount = 0;
-    if (couponCode) {
-      const coupon = await Coupon.findOne({ code: couponCode.toUpperCase(), isActive: true });
+    let validatedCouponCode = '';
+
+    if (couponCode && couponCode.trim()) {
+      const upperCode = couponCode.trim().toUpperCase();
+      const coupon = await Coupon.findOne({ code: upperCode, isActive: true });
+
       if (coupon) {
-        if (subtotal >= coupon.minimumOrderValue) {
-          if (coupon.discountType === 'percentage') {
-            discount = Math.min((subtotal * coupon.discountValue) / 100, coupon.maximumDiscount);
+        const expiry = coupon.expiry || coupon.expiryDate;
+        const isExpired = expiry && new Date() > new Date(expiry);
+        const limitReached = coupon.usageLimit && coupon.usedCount >= coupon.usageLimit;
+        const minOrder = coupon.minOrder !== undefined ? coupon.minOrder : (coupon.minimumOrderValue || 0);
+
+        // Check single usage for user
+        const currentUser = req.user;
+        const userEmail = currentUser?.email || shippingAddress?.email;
+        let alreadyRedeemed = false;
+
+        if (currentUser?._id || userEmail) {
+          const pastOrder = await Order.findOne({
+            couponCode: upperCode,
+            $or: [
+              ...(currentUser?._id ? [{ user: currentUser._id }] : []),
+              ...(userEmail ? [{ customerEmail: userEmail }] : [])
+            ]
+          });
+          if (pastOrder) alreadyRedeemed = true;
+        }
+
+        // Check payment method compatibility
+        const isCod = paymentMethod.toUpperCase() === 'COD';
+        let methodMismatch = false;
+        if (coupon.paymentMethod === 'prepaid' && isCod) methodMismatch = true;
+        if (coupon.paymentMethod === 'cod' && !isCod) methodMismatch = true;
+
+        if (!isExpired && !limitReached && !alreadyRedeemed && !methodMismatch && subtotal >= minOrder) {
+          const isPercent = coupon.type === 'percent' || coupon.discountType === 'percentage';
+          const discVal = coupon.value !== undefined ? coupon.value : (coupon.discountValue || 0);
+          const maxDiscount = coupon.maxDiscount !== undefined ? coupon.maxDiscount : (coupon.maximumDiscount || 1000);
+
+          if (isPercent) {
+            discount = Math.min((subtotal * discVal) / 100, maxDiscount);
           } else {
-            discount = coupon.discountValue;
+            discount = Math.min(discVal, subtotal);
           }
-          coupon.usedCount += 1;
+          discount = Math.round(discount);
+          validatedCouponCode = coupon.code;
+
+          // Increment usage count
+          coupon.usedCount = (coupon.usedCount || 0) + 1;
           await coupon.save();
         }
       }
     }
 
-    const shippingCharge = subtotal > 999 ? 0 : 99;
+    // 3. Dynamic Shipping Zone Calculation based on Country
+    const destinationCountry = shippingAddress.country ? shippingAddress.country.trim() : 'India';
+    let shippingCharge = 0;
+
+    const matchedZone = await ShippingZone.findOne({
+      country: new RegExp(`^${destinationCountry}$`, 'i'),
+      isActive: true
+    });
+
+    if (matchedZone) {
+      if (matchedZone.freeAbove > 0 && subtotal >= matchedZone.freeAbove) {
+        shippingCharge = 0;
+      } else {
+        shippingCharge = matchedZone.charge;
+      }
+    } else {
+      // Default Indian domestic rates from store settings
+      const freeThreshold = Number(settings.freeShippingThreshold !== undefined ? settings.freeShippingThreshold : 999);
+      const standardFee = Number(settings.standardShippingFee !== undefined ? settings.standardShippingFee : 99);
+      shippingCharge = subtotal >= freeThreshold ? 0 : standardFee;
+    }
+
+    // 4. Calculate Final Total Amount
     const tax = 0;
-    const totalAmount = Math.max(0, subtotal - discount + shippingCharge);
+    const totalAmount = Math.max(0, subtotal - discount + shippingCharge + codExtraCharge);
 
     const customerName = shippingAddress?.fullName || req.user?.name || 'Customer';
-    const customerEmail = req.user?.email || 'customer@example.com';
+    const customerEmail = req.user?.email || shippingAddress?.email || 'customer@example.com';
+    const customerPhone = shippingAddress?.phone || req.user?.phone || '';
 
-    // 3. Create Order
+    // Payment Status determination
+    const isPaid = (paymentMethod !== 'COD' && paymentId) ? 'paid' : 'pending';
+
+    // 5. Create Order Document
     const order = new Order({
       orderId: generateOrderId(),
       user: req.user ? req.user._id : undefined,
       customerName,
       customerEmail,
+      customerPhone,
       items: verifiedItems,
-      shippingAddress,
+      shippingAddress: {
+        name: customerName,
+        fullName: customerName,
+        phone: customerPhone,
+        street: shippingAddress.street || shippingAddress.address,
+        address: shippingAddress.address || shippingAddress.street,
+        city: shippingAddress.city,
+        state: shippingAddress.state || '',
+        pincode: shippingAddress.pincode,
+        country: destinationCountry
+      },
       paymentMethod,
-      paymentStatus: paymentMethod === 'COD' ? 'pending' : 'pending',
+      paymentStatus: isPaid,
+      paymentId: paymentId || '',
+      razorpayOrderId: razorpayOrderId || '',
+      paymentSignature: paymentSignature || '',
       orderStatus: 'Confirmed',
       subtotal,
       discount,
       shippingCharge,
+      codCharge: codExtraCharge,
       tax,
       totalAmount,
-      couponCode: couponCode || ''
+      couponCode: validatedCouponCode,
+      trackingNumber: '',
+      carrierName: '',
+      trackingUrl: '',
+      exchangeStatus: 'none'
     });
 
     const createdOrder = await order.save();
 
-    // 4. Decrement product stock levels in MongoDB Atlas (Clamped to minimum 0)
+    // 6. Decrement product stock levels in MongoDB Atlas
     for (const item of verifiedItems) {
       if (item.product) {
         const prodDoc = await Product.findById(item.product);
@@ -126,21 +228,202 @@ const createOrder = async (req, res) => {
       }
     }
 
-    // 5. Clear user cart after successful checkout
+    // 7. Clear user cart after successful checkout
     if (req.user) {
       await Cart.findOneAndUpdate({ user: req.user._id }, { items: [] });
     }
 
     res.status(201).json({
       success: true,
-      message: 'Order placed successfully',
+      message: 'Order placed successfully! Thank you for choosing VELORA.',
       data: createdOrder
     });
   } catch (error) {
+    console.error('[Create Order Error]', error);
     res.status(500).json({
       success: false,
       message: error.message
     });
+  }
+};
+
+// @desc    Create Razorpay / Online Payment Intent
+// @route   POST /api/orders/payment-intent
+// @access  Public / Private
+const createPaymentIntent = async (req, res) => {
+  try {
+    const { amount, currency = 'INR', receipt = 'receipt_' + Date.now() } = req.body;
+
+    if (!amount || amount <= 0) {
+      return res.status(400).json({ success: false, message: 'Valid payment amount required' });
+    }
+
+    // Generate online payment token / simulated Razorpay order ID
+    const rzpOrderId = `order_rzp_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+    const keyId = process.env.RAZORPAY_KEY_ID || 'rzp_test_velora_key_2026';
+
+    res.status(200).json({
+      success: true,
+      data: {
+        keyId,
+        orderId: rzpOrderId,
+        amount: Math.round(Number(amount) * 100), // in paise
+        currency,
+        receipt
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// @desc    Verify Online / Razorpay Payment
+// @route   POST /api/orders/verify-payment
+// @access  Public / Private
+const verifyPayment = async (req, res) => {
+  try {
+    const { orderId, paymentId, razorpayOrderId, signature } = req.body;
+
+    let order = null;
+    if (mongoose.Types.ObjectId.isValid(orderId)) {
+      order = await Order.findById(orderId);
+    }
+    if (!order) {
+      order = await Order.findOne({ orderId });
+    }
+
+    if (!order) {
+      return res.status(404).json({ success: false, message: 'Order not found' });
+    }
+
+    order.paymentStatus = 'paid';
+    order.paymentId = paymentId || `pay_${Date.now()}`;
+    order.razorpayOrderId = razorpayOrderId || order.razorpayOrderId;
+    order.paymentSignature = signature || '';
+    await order.save();
+
+    res.status(200).json({
+      success: true,
+      message: 'Payment verified successfully',
+      data: order
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// @desc    Request Exchange / Return for an order (within 10 days of delivery)
+// @route   POST /api/orders/:id/exchange
+// @access  Private
+const requestExchange = async (req, res) => {
+  try {
+    const { reason, notes } = req.body;
+
+    if (!reason || !reason.trim()) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please select an exchange reason (e.g. Size/Fit, Defective, Fabric Quality)'
+      });
+    }
+
+    let order = null;
+    if (mongoose.Types.ObjectId.isValid(req.params.id)) {
+      order = await Order.findById(req.params.id);
+    }
+    if (!order) {
+      order = await Order.findOne({ orderId: req.params.id });
+    }
+
+    if (!order) {
+      return res.status(404).json({ success: false, message: 'Order not found' });
+    }
+
+    // Verify order belongs to requesting user (if not admin)
+    if (req.user && req.user.role !== 'admin' && order.user && order.user.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ success: false, message: 'Unauthorized to request exchange for this order' });
+    }
+
+    // Must be Delivered to request exchange
+    if (order.orderStatus !== 'Delivered') {
+      return res.status(400).json({
+        success: false,
+        message: `Order must be in 'Delivered' state to request an exchange. Current status: ${order.orderStatus}`
+      });
+    }
+
+    // Check 10-day exchange window rule
+    const deliveryTimestamp = order.deliveredAt ? new Date(order.deliveredAt).getTime() : new Date(order.updatedAt).getTime();
+    const daysSinceDelivery = (Date.now() - deliveryTimestamp) / (1000 * 60 * 60 * 24);
+
+    if (daysSinceDelivery > 10) {
+      return res.status(400).json({
+        success: false,
+        message: `The 10-day exchange window for this order has expired (${Math.floor(daysSinceDelivery)} days elapsed since delivery).`
+      });
+    }
+
+    // Prevent duplicate active requests
+    if (order.exchangeStatus === 'requested') {
+      return res.status(400).json({
+        success: false,
+        message: 'An exchange request is already pending review for this order.'
+      });
+    }
+
+    order.exchangeStatus = 'requested';
+    order.exchangeReason = reason.trim();
+    order.exchangeNotes = notes ? notes.trim() : '';
+    order.exchangeRequestedAt = new Date();
+    await order.save();
+
+    res.status(200).json({
+      success: true,
+      message: 'Exchange request submitted successfully. Our executive will inspect and schedule pickup.',
+      data: order
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// @desc    Admin approve or reject exchange request
+// @route   PUT /api/admin/orders/:id/exchange
+// @access  Private/Admin
+const updateExchangeStatusAdmin = async (req, res) => {
+  try {
+    const { exchangeStatus, adminNotes } = req.body;
+
+    if (!['approved', 'rejected', 'none'].includes(exchangeStatus)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Status must be approved, rejected, or none'
+      });
+    }
+
+    let order = null;
+    if (mongoose.Types.ObjectId.isValid(req.params.id)) {
+      order = await Order.findById(req.params.id);
+    }
+    if (!order) {
+      order = await Order.findOne({ orderId: req.params.id });
+    }
+
+    if (!order) {
+      return res.status(404).json({ success: false, message: 'Order not found' });
+    }
+
+    order.exchangeStatus = exchangeStatus;
+    order.exchangeAdminNotes = adminNotes || '';
+    order.exchangeResolvedAt = new Date();
+    await order.save();
+
+    res.status(200).json({
+      success: true,
+      message: `Exchange request marked as ${exchangeStatus}`,
+      data: order
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
   }
 };
 
@@ -179,7 +462,7 @@ const getOrderById = async (req, res) => {
     }
 
     // Verify order belongs to logged in user or admin
-    if (order.user.toString() !== req.user._id.toString() && req.user.role !== 'admin') {
+    if (order.user && req.user && order.user.toString() !== req.user._id.toString() && req.user.role !== 'admin') {
       return res.status(403).json({
         success: false,
         message: 'Unauthorized to view this order'
@@ -216,12 +499,12 @@ const getAllOrdersAdmin = async (req, res) => {
   }
 };
 
-// @desc    Update order status (Admin Only)
+// @desc    Update order status, tracking, and carrier (Admin Only)
 // @route   PUT /api/admin/orders/:id/status
 // @access  Private/Admin
 const updateOrderStatusAdmin = async (req, res) => {
   try {
-    const { status } = req.body;
+    const { status, trackingNumber, carrierName, trackingUrl } = req.body;
     let order = null;
 
     if (mongoose.Types.ObjectId.isValid(req.params.id)) {
@@ -238,15 +521,25 @@ const updateOrderStatusAdmin = async (req, res) => {
       });
     }
 
-    order.orderStatus = status;
-    if (status === 'Delivered') {
-      order.paymentStatus = 'paid';
+    if (status) {
+      order.orderStatus = status;
+      if (status === 'Delivered') {
+        order.paymentStatus = 'paid';
+        if (!order.deliveredAt) {
+          order.deliveredAt = new Date();
+        }
+      }
     }
+
+    if (trackingNumber !== undefined) order.trackingNumber = trackingNumber.trim();
+    if (carrierName !== undefined) order.carrierName = carrierName.trim();
+    if (trackingUrl !== undefined) order.trackingUrl = trackingUrl.trim();
+
     const updatedOrder = await order.save();
 
     res.status(200).json({
       success: true,
-      message: `Order status updated to ${status}`,
+      message: `Order status updated to ${order.orderStatus}`,
       data: updatedOrder
     });
   } catch (error) {
@@ -259,6 +552,10 @@ const updateOrderStatusAdmin = async (req, res) => {
 
 module.exports = {
   createOrder,
+  createPaymentIntent,
+  verifyPayment,
+  requestExchange,
+  updateExchangeStatusAdmin,
   getMyOrders,
   getOrderById,
   getAllOrdersAdmin,

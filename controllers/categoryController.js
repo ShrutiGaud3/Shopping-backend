@@ -40,8 +40,10 @@ const getCategoryTree = async (req, res) => {
 
     allCategories.forEach((cat) => {
       const catObj = categoryMap[cat._id.toString()];
-      if (cat.parent && categoryMap[cat.parent.toString()]) {
-        categoryMap[cat.parent.toString()].children.push(catObj);
+      if (cat.parent) {
+        if (categoryMap[cat.parent.toString()]) {
+          categoryMap[cat.parent.toString()].children.push(catObj);
+        }
       } else {
         rootCategories.push(catObj);
       }
