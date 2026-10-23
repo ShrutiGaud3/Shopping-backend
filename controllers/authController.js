@@ -65,7 +65,7 @@ const registerUser = async (req, res) => {
 // @access  Public
 const loginUser = async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const { email, password, portal } = req.body;
 
     if (!email || !password) {
       return res.status(400).json({
@@ -78,6 +78,22 @@ const loginUser = async (req, res) => {
     const user = await User.findOne({ email });
 
     if (user && (await user.matchPassword(password))) {
+      // Disallow admin login on the customer storefront
+      if (portal === 'customer' && user.role === 'admin') {
+        return res.status(403).json({
+          success: false,
+          message: 'Admin accounts cannot sign in on the storefront. Please use the Admin Portal.'
+        });
+      }
+
+      // Disallow non-admin login on the admin portal
+      if (portal === 'admin' && user.role !== 'admin') {
+        return res.status(403).json({
+          success: false,
+          message: 'Access denied: Only administrators can sign in to the Admin Portal.'
+        });
+      }
+
       res.status(200).json({
         success: true,
         message: 'Login successful',
