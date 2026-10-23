@@ -4,12 +4,12 @@ const defaultPages = [
   {
     title: 'About Us',
     slug: 'about-us',
-    content: `<h2>Welcome to VELORA Fashion</h2>
-<p>Established in the heart of Surat's celebrated textile capital, VELORA is dedicated to celebrating the timeless elegance of Indian craftsmanship. We blend centuries-old weaving traditions with contemporary silhouettes to design sarees, bridal lehengas, festive anarkalis, and occasion wear that make you shine on your most cherished moments.</p>
+    content: `<h2>Welcome to Weavera Fashion</h2>
+<p>Established in the heart of Surat's celebrated textile capital, Weavera is dedicated to celebrating the timeless elegance of Indian craftsmanship. We blend centuries-old weaving traditions with contemporary silhouettes to design sarees, bridal lehengas, festive anarkalis, and occasion wear that make you shine on your most cherished moments.</p>
 <h3>Our Commitment to Craft</h3>
-<p>Every piece at VELORA is designed with meticulous attention to detail, using pure silks, georgettes, velvets, and hand-embroidered zari work sourced from master artisans across Gujarat and Rajasthan.</p>`,
-    metaTitle: 'About Us | VELORA Luxury Ethnic Couture',
-    metaDescription: 'Learn about VELORA, our heritage craftsmanship, and our journey from Surat to global wardrobes.',
+<p>Every piece at Weavera is designed with meticulous attention to detail, using pure silks, georgettes, velvets, and hand-embroidered zari work sourced from master artisans across Gujarat and Rajasthan.</p>`,
+    metaTitle: 'About Us | Weavera Luxury Ethnic Couture',
+    metaDescription: 'Learn about Weavera, our heritage craftsmanship, and our journey from Surat to global wardrobes.',
     isActive: true
   },
   {
@@ -23,7 +23,7 @@ const defaultPages = [
   <li><strong>Cash on Delivery (COD):</strong> Available on orders up to ₹10,000 with a standard verification process.</li>
   <li><strong>International Shipping:</strong> Delivered in 7 to 12 business days via DHL Express / FedEx.</li>
 </ul>`,
-    metaTitle: 'Shipping & Delivery Policy | VELORA',
+    metaTitle: 'Shipping & Delivery Policy | Weavera',
     metaDescription: 'Transparent domestic & international shipping timelines and free shipping terms.',
     isActive: true
   },
@@ -31,15 +31,15 @@ const defaultPages = [
     title: 'Refund & 10-Day Exchange Policy',
     slug: 'refund-policy',
     content: `<h2>10-Days Hassle-Free Exchange & Return Policy</h2>
-<p>At VELORA, your satisfaction is our foremost priority. If you encounter any sizing issues, color discrepancies, or manufacturing defects, we offer a seamless <strong>10-Day Exchange Window</strong> from the date of confirmed delivery.</p>
+<p>At Weavera, your satisfaction is our foremost priority. If you encounter any sizing issues, color discrepancies, or manufacturing defects, we offer a seamless <strong>10-Day Exchange Window</strong> from the date of confirmed delivery.</p>
 <h3>How to Request an Exchange:</h3>
 <ol>
-  <li>Log in to your VELORA account and navigate to <strong>My Orders</strong>.</li>
+  <li>Log in to your Weavera account and navigate to <strong>My Orders</strong>.</li>
   <li>Click on the <strong>Request Exchange</strong> button next to your delivered order.</li>
   <li>Select your preferred size or replacement reason and submit your request.</li>
   <li>Our logistics team will arrange reverse pickup within 48 business hours.</li>
 </ol>`,
-    metaTitle: 'Refund & Exchange Policy | VELORA',
+    metaTitle: 'Refund & Exchange Policy | Weavera',
     metaDescription: 'Read about our 10-days easy exchange policy and quick customer support process.',
     isActive: true
   },
@@ -47,9 +47,9 @@ const defaultPages = [
     title: 'Terms & Conditions',
     slug: 'terms-and-conditions',
     content: `<h2>Terms of Service</h2>
-<p>By accessing or purchasing from VELORA, you agree to comply with our commercial terms, privacy standards, and fair usage policies. All product imagery and designs are exclusive intellectual property of VELORA Fashion Hub.</p>`,
-    metaTitle: 'Terms & Conditions | VELORA',
-    metaDescription: 'Terms of service and legal agreement for shopping on VELORA.',
+<p>By accessing or purchasing from Weavera, you agree to comply with our commercial terms, privacy standards, and fair usage policies. All product imagery and designs are exclusive intellectual property of Weavera Fashion Hub.</p>`,
+    metaTitle: 'Terms & Conditions | Weavera',
+    metaDescription: 'Terms of service and legal agreement for shopping on Weavera.',
     isActive: true
   },
   {
@@ -57,7 +57,7 @@ const defaultPages = [
     slug: 'privacy-policy',
     content: `<h2>Privacy & Data Security</h2>
 <p>We value your trust and are committed to protecting your personal data. We use 256-bit bank-grade encryption to safeguard your checkout information and do not share customer contact details with third-party marketers.</p>`,
-    metaTitle: 'Privacy Policy | VELORA',
+    metaTitle: 'Privacy Policy | Weavera',
     metaDescription: 'Our commitment to protecting your privacy and security.',
     isActive: true
   }
