@@ -9,9 +9,16 @@ const generateOrderId = require('../utils/generateOrderId');
 
 // @desc    Create new customer order (Checkout)
 // @route   POST /api/orders
-// @access  Public (optionalProtect) / Private
+// @access  Private (Requires login)
 const createOrder = async (req, res) => {
   try {
+    if (!req.user) {
+      return res.status(401).json({
+        success: false,
+        message: 'Please sign in to place an order.'
+      });
+    }
+
     const {
       items,
       shippingAddress,
@@ -88,7 +95,7 @@ const createOrder = async (req, res) => {
       });
     }
 
-    // 2. Validate coupon if provided
+    // 2. Validate coupon if provided - Strict single-use per customer
     let discount = 0;
     let validatedCouponCode = '';
 
@@ -96,52 +103,88 @@ const createOrder = async (req, res) => {
       const upperCode = couponCode.trim().toUpperCase();
       const coupon = await Coupon.findOne({ code: upperCode, isActive: true });
 
-      if (coupon) {
-        const expiry = coupon.expiry || coupon.expiryDate;
-        const isExpired = expiry && new Date() > new Date(expiry);
-        const limitReached = coupon.usageLimit && coupon.usedCount >= coupon.usageLimit;
-        const minOrder = coupon.minOrder !== undefined ? coupon.minOrder : (coupon.minimumOrderValue || 0);
+      if (!coupon) {
+        return res.status(400).json({
+          success: false,
+          message: `Coupon code '${upperCode}' is invalid or deactivated.`
+        });
+      }
 
-        // Check single usage for user
-        const currentUser = req.user;
-        const userEmail = currentUser?.email || shippingAddress?.email;
-        let alreadyRedeemed = false;
+      const expiry = coupon.expiry || coupon.expiryDate;
+      const isExpired = expiry && new Date() > new Date(expiry);
+      if (isExpired) {
+        return res.status(400).json({
+          success: false,
+          message: `Coupon code '${upperCode}' has expired.`
+        });
+      }
 
-        if (currentUser?._id || userEmail) {
-          const pastOrder = await Order.findOne({
-            couponCode: upperCode,
-            $or: [
-              ...(currentUser?._id ? [{ user: currentUser._id }] : []),
-              ...(userEmail ? [{ customerEmail: userEmail }] : [])
-            ]
+      const limitReached = coupon.usageLimit && coupon.usedCount >= coupon.usageLimit;
+      if (limitReached) {
+        return res.status(400).json({
+          success: false,
+          message: `Coupon code '${upperCode}' has reached its maximum global redemption limit.`
+        });
+      }
+
+      // Check single usage for customer (User ID or Customer Email)
+      const currentUser = req.user;
+      const userEmail = (currentUser?.email || shippingAddress?.email || '').trim();
+      const userConditions = [];
+      if (currentUser?._id) userConditions.push({ user: currentUser._id });
+      if (userEmail) userConditions.push({ customerEmail: new RegExp(`^${userEmail}$`, 'i') });
+
+      if (userConditions.length > 0) {
+        const pastOrder = await Order.findOne({
+          couponCode: new RegExp(`^${upperCode}$`, 'i'),
+          $or: userConditions
+        });
+        if (pastOrder) {
+          return res.status(400).json({
+            success: false,
+            message: `You have already redeemed coupon '${upperCode}' on previous order #${pastOrder.orderId}. Each coupon can only be used once.`
           });
-          if (pastOrder) alreadyRedeemed = true;
-        }
-
-        // Check payment method compatibility
-        const isCod = paymentMethod.toUpperCase() === 'COD';
-        let methodMismatch = false;
-        if (coupon.paymentMethod === 'prepaid' && isCod) methodMismatch = true;
-        if (coupon.paymentMethod === 'cod' && !isCod) methodMismatch = true;
-
-        if (!isExpired && !limitReached && !alreadyRedeemed && !methodMismatch && subtotal >= minOrder) {
-          const isPercent = coupon.type === 'percent' || coupon.discountType === 'percentage';
-          const discVal = coupon.value !== undefined ? coupon.value : (coupon.discountValue || 0);
-          const maxDiscount = coupon.maxDiscount !== undefined ? coupon.maxDiscount : (coupon.maximumDiscount || 1000);
-
-          if (isPercent) {
-            discount = Math.min((subtotal * discVal) / 100, maxDiscount);
-          } else {
-            discount = Math.min(discVal, subtotal);
-          }
-          discount = Math.round(discount);
-          validatedCouponCode = coupon.code;
-
-          // Increment usage count
-          coupon.usedCount = (coupon.usedCount || 0) + 1;
-          await coupon.save();
         }
       }
+
+      // Check payment method compatibility
+      const isCod = paymentMethod.toUpperCase() === 'COD';
+      if (coupon.paymentMethod === 'prepaid' && isCod) {
+        return res.status(400).json({
+          success: false,
+          message: `Coupon '${upperCode}' is only valid for prepaid online payments (UPI/Card).`
+        });
+      }
+      if (coupon.paymentMethod === 'cod' && !isCod) {
+        return res.status(400).json({
+          success: false,
+          message: `Coupon '${upperCode}' is only valid for Cash on Delivery (COD) orders.`
+        });
+      }
+
+      const minOrder = coupon.minOrder !== undefined ? coupon.minOrder : (coupon.minimumOrderValue || 0);
+      if (subtotal < minOrder) {
+        return res.status(400).json({
+          success: false,
+          message: `Minimum order value of ₹${minOrder} is required for coupon '${upperCode}'.`
+        });
+      }
+
+      const isPercent = coupon.type === 'percent' || coupon.discountType === 'percentage';
+      const discVal = coupon.value !== undefined ? coupon.value : (coupon.discountValue || 0);
+      const maxDiscount = coupon.maxDiscount !== undefined ? coupon.maxDiscount : (coupon.maximumDiscount || 1000);
+
+      if (isPercent) {
+        discount = Math.min((subtotal * discVal) / 100, maxDiscount);
+      } else {
+        discount = Math.min(discVal, subtotal);
+      }
+      discount = Math.round(discount);
+      validatedCouponCode = coupon.code;
+
+      // Increment coupon global usage count
+      coupon.usedCount = (coupon.usedCount || 0) + 1;
+      await coupon.save();
     }
 
     // 3. Dynamic Shipping Zone Calculation based on Country

@@ -7,12 +7,12 @@ const {
   updateCoupon,
   deleteCoupon
 } = require('../controllers/couponController');
-const { protect } = require('../middleware/authMiddleware');
+const { protect, optionalProtect } = require('../middleware/authMiddleware');
 const { adminOnly } = require('../middleware/adminMiddleware');
 
-// Validate and apply coupon for checkout (Public or Auth)
-router.post('/validate', validateCoupon);
-router.post('/apply', validateCoupon);
+// Validate and apply coupon for checkout (Populates req.user if Bearer token present)
+router.post('/validate', optionalProtect, validateCoupon);
+router.post('/apply', optionalProtect, validateCoupon);
 
 // Get all coupons, create coupon
 router.route('/')

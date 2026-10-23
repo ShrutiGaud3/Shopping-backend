@@ -8,14 +8,14 @@ const {
   getMyOrders,
   getOrderById
 } = require('../controllers/orderController');
-const { protect, optionalProtect } = require('../middleware/authMiddleware');
+const { protect } = require('../middleware/authMiddleware');
 
-// POST /api/orders is open to both authenticated and guest users via optionalProtect
-router.post('/', optionalProtect, createOrder);
+// POST /api/orders requires authenticated customer account
+router.post('/', protect, createOrder);
 
-// Payment Intent & Verification
-router.post('/payment-intent', optionalProtect, createPaymentIntent);
-router.post('/verify-payment', optionalProtect, verifyPayment);
+// Payment Intent & Verification require authenticated customer
+router.post('/payment-intent', protect, createPaymentIntent);
+router.post('/verify-payment', protect, verifyPayment);
 
 // Customer Exchange Request (10-day window check)
 router.post('/:id/exchange', protect, requestExchange);

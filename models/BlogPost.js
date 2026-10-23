@@ -37,7 +37,7 @@ const blogPostSchema = new mongoose.Schema({
     trim: true
   },
   author: {
-    name: { type: String, default: 'SuratiKart Style Team' },
+    name: { type: String, default: 'Weavera Style Team' },
     avatar: { type: String, default: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=200&q=80' },
     role: { type: String, default: 'Senior Fashion & Handloom Curator' }
   },

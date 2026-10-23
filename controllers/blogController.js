@@ -3,12 +3,12 @@ const BlogPost = require('../models/BlogPost');
 // Initial seed articles if database has no blogs
 const defaultEthnicBlogs = [
   {
-    title: 'The Royal Guide to Choosing Authentic Surat Silk Sarees',
-    slug: 'royal-guide-to-choosing-authentic-surat-silk-sarees',
+    title: 'The Royal Guide to Choosing Authentic Heritage Silk Sarees',
+    slug: 'royal-guide-to-choosing-authentic-heritage-silk-sarees',
     coverImage: 'https://images.unsplash.com/photo-1610030469983-98e550d6193c?auto=format&fit=crop&w=1200&q=80',
-    excerpt: 'Discover the heritage of Surat weavers, the hallmark of pure zari threads, and how to identify real handloom silks for weddings and festive galas.',
+    excerpt: 'Discover the heritage of master weavers, the hallmark of pure zari threads, and how to identify real handloom silks for weddings and festive galas.',
     category: 'Silk & Handlooms',
-    tags: ['Surat Silk', 'Saree Guide', 'Handloom', 'Bridal Heritage'],
+    tags: ['Heritage Silk', 'Saree Guide', 'Handloom', 'Bridal Heritage'],
     readTime: '6 min read',
     isPublished: true,
     author: {
@@ -17,13 +17,13 @@ const defaultEthnicBlogs = [
       role: 'Master Textile Specialist'
     },
     content: `
-      <h2>The Textile Legacy of Surat</h2>
-      <p>Surat, often celebrated as the silk and textile capital of India, has been weaving tales of grandeur for over seven centuries. From royal Mughal courts to modern bridal catwalks, Surat handlooms represent the pinnacle of Indian textile craftsmanship.</p>
+      <h2>The Textile Legacy of Indian Weaves</h2>
+      <p>Celebrated as the handloom capital of the world, Indian weaving traditions have been creating tales of grandeur for over seven centuries. From royal heritage courts to modern bridal catwalks, our handlooms represent the pinnacle of textile craftsmanship.</p>
 
-      <h3>How to Spot Genuine Surat Silk</h3>
+      <h3>How to Spot Genuine Handloom Silk</h3>
       <p>When selecting a silk saree for a milestone celebration, understanding the purity of the weave makes all the difference:</p>
       <ul>
-        <li><strong>Lustre and Texture:</strong> Pure Surat silk reflects light with multidirectional warmth rather than synthetic single-plane shine.</li>
+        <li><strong>Lustre and Texture:</strong> Pure handloom silk reflects light with multidirectional warmth rather than synthetic single-plane shine.</li>
         <li><strong>Zari Authenticity:</strong> Premium bridal sarees feature electroplated silver and gold-wrapped threads that feel supple rather than stiff or abrasive.</li>
         <li><strong>Pallu Reversibility:</strong> Traditional jacquard loom borders maintain clean reverse finishing with minimal exposed yarn knots.</li>
       </ul>
@@ -34,8 +34,8 @@ const defaultEthnicBlogs = [
       <p>Always preserve your silk sarees wrapped in breathable cotton or muslin fabric. Avoid spraying perfumes directly onto zari borders, and air-dry in shaded breeze after celebrations before storing.</p>
     `,
     seo: {
-      metaTitle: 'Guide to Authentic Surat Silk Sarees | SuratiKart Blog',
-      metaDescription: 'Learn how to identify authentic Surat handloom silk sarees, zari purity, and styling tips for weddings and festivities.'
+      metaTitle: 'Guide to Authentic Silk Sarees | Weavera Blog',
+      metaDescription: 'Learn how to identify authentic handloom silk sarees, zari purity, and styling tips for weddings and festivities.'
     }
   },
   {
@@ -44,7 +44,7 @@ const defaultEthnicBlogs = [
     coverImage: 'https://images.unsplash.com/photo-1583391733956-3750e0ff4e8b?auto=format&fit=crop&w=1200&q=80',
     excerpt: 'Explore the biggest bridal runway looks of this season featuring double dupattas, 3D floral threadwork, and bespoke unstitched lehenga styling.',
     category: 'Bridal Couture',
-    tags: ['Bridal Lehenga', 'Wedding Fashion', 'Surat Couture', 'Trends 2026'],
+    tags: ['Bridal Lehenga', 'Wedding Fashion', 'Heritage Couture', 'Trends 2026'],
     readTime: '5 min read',
     isPublished: true,
     author: {
@@ -54,7 +54,7 @@ const defaultEthnicBlogs = [
     },
     content: `
       <h2>The Evolution of Modern Indian Bridal Wear</h2>
-      <p>The 2026 wedding season celebrates a breathtaking balance between royal Rajasthani heritage and lightweight comfort. Brides are no longer willing to endure heavy, suffocating garments on their special day.</p>
+      <p>The 2026 wedding season celebrates a breathtaking balance between royal heritage and lightweight comfort. Brides are no longer willing to endure heavy, suffocating garments on their special day.</p>
 
       <h3>Key Trends Defining 2026 Brides</h3>
       <ol>
@@ -66,8 +66,8 @@ const defaultEthnicBlogs = [
       <p>With our custom semi-stitched lehenga sets, every bride can personalize waist fit, sleeve embroidery, and blouse necklines to perfection.</p>
     `,
     seo: {
-      metaTitle: 'Bridal Lehenga Trends 2026 | VELORA Ethnic Wear',
-      metaDescription: 'Discover the latest bridal lehenga trends for 2026: pastel organza, velvet borders, and royal Surat embroidery.'
+      metaTitle: 'Bridal Lehenga Trends 2026 | Weavera Ethnic Wear',
+      metaDescription: 'Discover the latest bridal lehenga trends for 2026: pastel organza, velvet borders, and royal handloom embroidery.'
     }
   },
   {
@@ -339,7 +339,7 @@ const createBlog = async (req, res) => {
       tags: Array.isArray(tags) ? tags : (tags ? tags.split(',').map(t => t.trim()) : []),
       category: category || 'Ethnic Fashion & Heritage',
       author: author || {
-        name: req.user?.name || 'SuratiKart Style Team',
+        name: req.user?.name || 'Weavera Style Team',
         avatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=200&q=80',
         role: 'Senior Fashion & Handloom Curator'
       },

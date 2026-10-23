@@ -5,11 +5,11 @@ const defaultPages = [
     title: 'About Us',
     slug: 'about-us',
     content: `<h2>Welcome to Weavera Fashion</h2>
-<p>Established in the heart of Surat's celebrated textile capital, Weavera is dedicated to celebrating the timeless elegance of Indian craftsmanship. We blend centuries-old weaving traditions with contemporary silhouettes to design sarees, bridal lehengas, festive anarkalis, and occasion wear that make you shine on your most cherished moments.</p>
+<p>Weavera is dedicated to celebrating the timeless elegance of Indian craftsmanship. We blend centuries-old weaving traditions with contemporary silhouettes to design sarees, bridal lehengas, festive anarkalis, and occasion wear that make you shine on your most cherished moments.</p>
 <h3>Our Commitment to Craft</h3>
 <p>Every piece at Weavera is designed with meticulous attention to detail, using pure silks, georgettes, velvets, and hand-embroidered zari work sourced from master artisans across Gujarat and Rajasthan.</p>`,
     metaTitle: 'About Us | Weavera Luxury Ethnic Couture',
-    metaDescription: 'Learn about Weavera, our heritage craftsmanship, and our journey from Surat to global wardrobes.',
+    metaDescription: 'Learn about Weavera, our heritage craftsmanship, and our journey to global wardrobes.',
     isActive: true
   },
   {

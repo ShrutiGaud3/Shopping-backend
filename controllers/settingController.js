@@ -11,7 +11,7 @@ const defaultSettings = {
   whatsappPrefilledMessage: 'Hello VELORA Support! 👋 I am browsing your online store and need assistance.',
   supportPhone: '+91 98765 43210',
   supportEmail: 'support@velora.com',
-  supportAddress: 'Ring Road Surat Fashion Hub, Surat, Gujarat - 395002, India',
+  supportAddress: 'Weavera Fashion Studio, India',
   workingHours: 'Mon - Sat: 10:00 AM - 7:00 PM IST',
   socialLinks: {
     facebook: 'https://facebook.com',

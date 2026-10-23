@@ -26,7 +26,7 @@ const seedInitialCoupons = async () => {
           isActive: true
         },
         {
-          code: 'SURATFESTIVE',
+          code: 'WEAVERAFESTIVE',
           type: 'percent',
           value: 15,
           minOrder: 1499,
@@ -115,19 +115,19 @@ const validateCoupon = async (req, res) => {
 
     // 3. User Specific Single Usage Check (User ID or Customer Email)
     const currentUser = req.user;
-    const userEmail = currentUser?.email || email;
+    const userEmail = (currentUser?.email || email || '').trim();
 
     const queryConditions = [];
     if (currentUser && currentUser._id) {
       queryConditions.push({ user: currentUser._id });
     }
     if (userEmail) {
-      queryConditions.push({ customerEmail: userEmail });
+      queryConditions.push({ customerEmail: new RegExp(`^${userEmail}$`, 'i') });
     }
 
     if (queryConditions.length > 0) {
       const existingOrder = await Order.findOne({
-        couponCode: uppercaseCode,
+        couponCode: new RegExp(`^${uppercaseCode}$`, 'i'),
         $or: queryConditions
       });
 
@@ -135,7 +135,7 @@ const validateCoupon = async (req, res) => {
         return res.status(400).json({
           success: false,
           valid: false,
-          message: `You have already redeemed coupon '${uppercaseCode}' on previous order #${existingOrder.orderId}`
+          message: `You have already redeemed coupon '${uppercaseCode}' on previous order #${existingOrder.orderId}. Each coupon can only be used once.`
         });
       }
     }

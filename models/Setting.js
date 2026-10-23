@@ -29,7 +29,7 @@ const settingSchema = new mongoose.Schema({
   },
   supportAddress: {
     type: String,
-    default: 'Ring Road Surat Fashion Hub, Surat, Gujarat - 395002, India'
+    default: 'Weavera Fashion Studio, India'
   },
   workingHours: {
     type: String,

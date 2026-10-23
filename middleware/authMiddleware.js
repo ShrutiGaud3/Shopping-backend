@@ -17,22 +17,18 @@ const protect = async (req, res, next) => {
         return next();
       }
     } catch (error) {
-      // Fallback if token expired or invalid
+      console.error('[Auth Protect Error]', error.message);
+      return res.status(401).json({
+        success: false,
+        message: 'Not authorized: Session expired or invalid token'
+      });
     }
   }
 
-  // Resilient fallback: attach default user or admin user if token is missing/invalid
-  try {
-    let fallbackUser = await User.findOne({ role: 'admin' });
-    if (!fallbackUser) {
-      fallbackUser = await User.findOne();
-    }
-    req.user = fallbackUser;
-  } catch (err) {
-    // Ignore fallback errors
-  }
-
-  next();
+  return res.status(401).json({
+    success: false,
+    message: 'Not authorized: Please sign in to proceed'
+  });
 };
 
 const optionalProtect = async (req, res, next) => {
@@ -47,23 +43,14 @@ const optionalProtect = async (req, res, next) => {
       const decoded = jwt.verify(token, process.env.JWT_SECRET || 'velora_super_secret_jwt_key_2026');
       req.user = await User.findById(decoded.id).select('-password');
     } catch (error) {
-      // Ignore token verification errors for optional auth
+      req.user = undefined;
     }
-  }
-
-  if (!req.user) {
-    try {
-      let fallbackUser = await User.findOne({ role: 'admin' });
-      if (!fallbackUser) {
-        fallbackUser = await User.findOne();
-      }
-      req.user = fallbackUser;
-    } catch (err) {
-      // Ignore
-    }
+  } else {
+    req.user = undefined;
   }
 
   next();
 };
 
 module.exports = { protect, optionalProtect };
+

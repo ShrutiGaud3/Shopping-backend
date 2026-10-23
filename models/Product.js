@@ -115,7 +115,7 @@ const productSchema = new mongoose.Schema({
     default: false
   },
 
-  // Surat Ethnic Wear Specialization Fields
+  // Ethnic Wear Specialization Fields
   fabric: {
     type: String,
     default: 'Banarasi Silk',

@@ -5,7 +5,7 @@ const defaultMarquees = [
   { text: 'FREE SHIPPING ON ALL ORDERS ABOVE ₹999', link: '/products', icon: 'Truck', order: 1, isActive: true },
   { text: '10-DAYS EASY SIZE EXCHANGE GUARANTEE', link: '/pages/refund-policy', icon: 'RotateCcw', order: 2, isActive: true },
   { text: 'NEW ARRIVALS: FESTIVE & BRIDAL LEHENGA SETS LIVE', link: '/products?category=Lehengas', icon: 'Sparkles', order: 3, isActive: true },
-  { text: '100% HANDCRAFTED SURAT TEXTILE ASSURED', link: '/pages/about-us', icon: 'ShieldCheck', order: 4, isActive: true }
+  { text: '100% HANDCRAFTED ETHNIC TEXTILE ASSURED', link: '/pages/about-us', icon: 'ShieldCheck', order: 4, isActive: true }
 ];
 
 // @desc    Get active marquee items for public ticker
