@@ -21,8 +21,8 @@ const seedPhase2 = async () => {
       console.log('Seeding Hero Banners...');
       await Banner.insertMany([
         {
-          title: 'ROYAL SURAT SILK SAREES',
-          subtitle: 'Direct from master weavers in Surat. Pure Zari Banarasi & Kanjivaram masterpieces.',
+          title: 'ROYAL HERITAGE SILK SAREES',
+          subtitle: 'Direct from master weavers. Pure Zari Banarasi & Kanjivaram masterpieces.',
           badge: 'FESTIVE EDIT 2026',
           desktopImage: 'https://images.unsplash.com/photo-1610030469983-98e550d6193c?auto=format&fit=crop&w=1920&q=80',
           mobileImage: 'https://images.unsplash.com/photo-1610030469983-98e550d6193c?auto=format&fit=crop&w=800&q=80',
@@ -71,7 +71,7 @@ const seedPhase2 = async () => {
       console.log('Seeding Trust Badges (USPs)...');
       await TrustBadge.insertMany([
         {
-          title: 'Surat Direct Prices',
+          title: 'Direct Handloom Prices',
           subtitle: 'Wholesale factory rates with zero middlemen markups',
           icon: 'sparkles',
           order: 1,
@@ -118,7 +118,7 @@ const seedPhase2 = async () => {
       await HomeSection.insertMany([
         {
           title: 'Shop by Ethnic Category',
-          subtitle: 'Explore authentic creations crafted with traditional Surat mastery',
+          subtitle: 'Explore authentic creations crafted with traditional handloom mastery',
           type: 'story_circles',
           order: 1,
           isActive: true,
@@ -141,7 +141,7 @@ const seedPhase2 = async () => {
           }
         },
         {
-          title: 'Surat Textile Special Highlights',
+          title: 'Handloom Textile Special Highlights',
           subtitle: 'Handpicked spotlight collections straight from loom to your wardrobe',
           type: 'banner_grid',
           order: 3,
@@ -187,7 +187,7 @@ const seedPhase2 = async () => {
         },
         {
           title: 'Custom Stitching & Bridal Video Consultation',
-          subtitle: 'Connect directly with our Surat stylists on WhatsApp for video call blouse customization, size fitting & urgent dispatch.',
+          subtitle: 'Connect directly with our master stylists on WhatsApp for video call blouse customization, size fitting & urgent dispatch.',
           type: 'campaign_banner',
           order: 5,
           isActive: true,
@@ -198,7 +198,7 @@ const seedPhase2 = async () => {
               {
                 image: 'https://images.unsplash.com/photo-1583391733956-3750e0ff4e8b?auto=format&fit=crop&w=1200&q=80',
                 title: 'Video Call Shopping Experience',
-                subtitle: 'See fabric, zari shine & draping live from our Surat studio',
+                subtitle: 'See fabric, zari shine & draping live from our design studio',
                 link: 'https://wa.me/919876543210',
                 badge: 'FREE SERVICE'
               }
